@@ -1,8 +1,9 @@
 /*!
  * @file WaveDx.h
  *
- * This library is a highly modified version of Ladyada's Wave Shield library.
- * I have made many changes that may have introduced bugs.
+ * This library is a modified version of WaveHX,  which in itseldf is a 
+ * highly modified version of Ladyada's Wave Shield library.
+ * We have made many changes that may have introduced bugs.
  *
  *
  * Adafruit invests time and resources providing this open source code,
