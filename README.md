@@ -15,7 +15,7 @@ Try daphc.pde in the WaveHC/examples folder.  If you have
 problems run the SdReadTest.pde sketch to get more information.
 
 
-## AVR128DB28 and AVR64DB48
+## AVR64DB28 and AVR128DB48
 
 Those are new (as of 2022) AVR microcontroller and the main target for this port. See 
 
