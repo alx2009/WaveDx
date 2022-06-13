@@ -1,7 +1,8 @@
-/* Arduino WaveHC Library
- * Copyright (C) 2009 by William Greiman
+/* Arduino WaveDx Library, a port of WaveHC to AVR Dx architecture
+ * Original work WaveHC.cpp Copyright (C) 2009 by William Greiman
+ * Derived work WaveDx.cpp Copyright (C) 2022 ALX2009
  *
- * This file is part of the Arduino WaveHC Library
+ * This file is part of the Arduino WaveDx Library
  *
  * This Library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,26 +15,27 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with the Arduino WaveHC Library.  If not, see
+ * along with the Arduino WaveDx Library.  If not, see
  * <http://www.gnu.org/licenses/>.
  */
 
 /**
-\mainpage Arduino WaveHC Library
-<CENTER>Copyright &copy; 2009 by William Greiman
+\mainpage Arduino WaveDx Library
+<CENTER>Copyright &copy; 2009 by William Greiman / Copyright &copy; 2022 ALX2009
 </CENTER>
 
 \section Intro Introduction
 
-WaveHC is an Arduino library for the Adafruit Wave Shield.  It can play
+WaveDx is an Arduino library to play sounds using an SD card and the built
+in ADC in AVR Dx microcontrollers.  It can play
 uncompressed mono Wave(.WAV) files at sample rate up to 44.1 K samples per
 second. Only the high 12 bits of 16-bit files are used.  Audio files are read
 from an SD flash memory card.
 
 Standard SD and high capacity SDHC flash memory cards are supported with
-FAT16 or FAT32 file systems.  The WaveHC only supports short FAT 8.3 names.
+FAT16 or FAT32 file systems.  The WaveDx only supports short FAT 8.3 names.
 
-WaveHC does not support MMC flash cards.
+WaveDx does not support MMC flash cards.
 
 \section comment Bugs and Comments
 
@@ -158,7 +160,7 @@ http://www.atmel.com/dyn/resources/prod_documents/doc8161.pdf
 
  */
 
-#include <WaveHC.h>
+#include <WaveDx.h>
 #include <WaveUtil.h>
 #include <avr/interrupt.h>
 #include <mcpDac.h>
@@ -304,7 +306,7 @@ WaveHC::WaveHC(void) { fd = 0; }
  * for failure include I/O error, an invalid wave file or a wave
  *  file with features that WaveHC does not support.
  */
-uint8_t WaveHC::create(FatReader &f) {
+uint8_t WaveDx::create(FatReader &f) {
   // 18 byte buffer
   // can use this since Arduino and RIFF are Little Endian
   if (!DVOLUME) {
@@ -407,7 +409,7 @@ uint8_t WaveHC::create(FatReader &f) {
  * @brief Returns true if the player is paused else false.
  * @returns true if paused, false otherwise
  */
-uint8_t WaveHC::isPaused(void) {
+uint8_t WaveDx::isPaused(void) {
   cli();
   uint8_t rtn = isplaying && !(TIMSK1 & _BV(OCIE1A));
   sei();
@@ -417,7 +419,7 @@ uint8_t WaveHC::isPaused(void) {
 /**
  * Pause the player.
  */
-void WaveHC::pause(void) {
+void WaveDx::pause(void) {
   cli();
   TIMSK1 &= ~_BV(OCIE1A); // disable DAC interrupt
   sei();
@@ -427,12 +429,12 @@ void WaveHC::pause(void) {
 /**
  * Play a wave file.
  *
- * WaveHC::create() must be called before a file can be played.
+ * WaveDx::create() must be called before a file can be played.
  *
  * Check the member variable WaveHC::isplaying to monitor the status
  * of the player.
  */
-void WaveHC::play(void) {
+void WaveDx::play(void) {
   // setup the interrupt as necessary
 
   int16_t read;
@@ -481,7 +483,7 @@ void WaveHC::play(void) {
  * @param len the number of bytes to read.
  * @returns the number of bytes that were actually read.
  */
-int16_t WaveHC::readWaveData(uint8_t *buff, uint16_t len) {
+int16_t WaveDx::readWaveData(uint8_t *buff, uint16_t len) {
 
   if (remainingBytesInChunk == 0) {
     struct {
@@ -519,7 +521,7 @@ int16_t WaveHC::readWaveData(uint8_t *buff, uint16_t len) {
 }
 //------------------------------------------------------------------------------
 /** Resume a paused player. */
-void WaveHC::resume(void) {
+void WaveDx::resume(void) {
   cli();
   // enable DAC interrupt
   if (isplaying)
@@ -533,7 +535,7 @@ void WaveHC::resume(void) {
  * \param[in] pos seek will attempt to position the file near \a pos.
  * \a pos is the byte number from the beginning of file.
  */
-void WaveHC::seek(uint32_t pos) {
+void WaveDx::seek(uint32_t pos) {
   // make sure buffer fill interrupt doesn't happen
   cli();
   if (fd) {
@@ -558,7 +560,7 @@ void WaveHC::seek(uint32_t pos) {
  * \param[in] samplerate The new sample rate in samples per second.
  * No checks are done on the input parameter.
  */
-void WaveHC::setSampleRate(uint32_t samplerate) {
+void WaveDx::setSampleRate(uint32_t samplerate) {
   if (samplerate < 500)
     samplerate = 500;
   if (samplerate > 50000)
@@ -573,7 +575,7 @@ void WaveHC::setSampleRate(uint32_t samplerate) {
 }
 //------------------------------------------------------------------------------
 /** Stop the player. */
-void WaveHC::stop(void) {
+void WaveDx::stop(void) {
   TIMSK1 &= ~_BV(OCIE1A); // turn off interrupt
   playing->isplaying = 0;
   playing = 0;
