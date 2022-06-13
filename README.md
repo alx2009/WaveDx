@@ -17,9 +17,10 @@ problems run the SdReadTest.pde sketch to get more information.
 
 ## AVR64DB28 and AVR128DB48
 
-Those are new (as of 2022) AVR microcontroller and the main target for this port. See 
+Those are new (as of 2022) AVR microcontroller and the main target for this port. 
+For more information on these parts please see https://github.com/SpenceKonde/DxCore 
 
-The built in DAC 12 bit will be used.  
+The built in 10 bit DAC will be used (rather than an external DAC as in WaveHC).  
 
 
 ## SD CARD INIT PROBLEMS
