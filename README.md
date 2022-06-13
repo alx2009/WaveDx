@@ -1,5 +1,7 @@
 # ALX2009 WaveDx Library
 
+WORK IN PROGRESS - DO NOT USE YET!
+
 This library is a fork of the Adafruit WaveHC library, ported to the AVR Dx architecture and using the built in DAC
 
 You may want to check the original WaveHC documentation for background:
