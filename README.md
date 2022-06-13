@@ -1,31 +1,25 @@
-# Adafruit WaveHC Library [![Build Status](https://github.com/adafruit/WaveHC/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/adafruit/WaveHC/actions)[![Documentation](https://github.com/adafruit/ci-arduino/blob/master/assets/doxygen_badge.svg)](http://adafruit.github.io/WaveHC/html/index.html)
+# ALX2009 WaveDx Library
 
-<img src="https://cdn-shop.adafruit.com/970x728/94-05.jpg" height="300"/>
+This library is a fork of the Adafruit WaveHC library, ported to the AVR Dx architecture and using the built in DAC
 
-## WaveHC is a library for the Adafruit Wave Shield.:
-  * https://www.adafruit.com/products/94
+You may want to check the original WaveHC documentation for background:
+https://github.com/adafruit/WaveHC
 
-To use this library place the uncompressed WaveHC folder into the 
-libraries subfolder in your main sketches folder.  You may need to
-create the libraries folder.  Restart the Arduino IDE if it was open.
-
-Be sure to read Ladyada's excellent tutorial for WaveHC:
+Or Ladyada's excellent tutorial for WaveHC:
 http://www.ladyada.net/make/waveshield/libraryhc.html
 
 Developers and advanced Arduino users may wish to read the html
 documentation starting with html/index.html.
 
-Please read the changes.txt file.
-
 Try daphc.pde in the WaveHC/examples folder.  If you have
 problems run the SdReadTest.pde sketch to get more information.
 
 
-## ATMEGA168
+## AVR128DB28 and AVR64DB48
 
-For the AtMega168 be sure to reduce the serial buffer size by setting 
-RX_BUFFER_SIZE to 32 or less in 
-hardware/arduino/cores/arduino/HardwareSerial.cpp.  I use 16.
+Those are new (as of 2022) AVR microcontroller and the main target for this port. See 
+
+The built in DAC 12 bit will be used.  
 
 
 ## SD CARD INIT PROBLEMS
@@ -36,27 +30,22 @@ To change edit SdReader.h and change the SPI_INIT_SLOW line to:
 #define SPI_INIT_SLOW 1
 
 
-## WAVE SHIELD V1.0
+## Hardware
 
-You may have SD I/O errors with Wave Shield V1.0.  Most SD cards
-work with V1.0 but some brands/types fail.  Often reducing the SPI
-bus speed to 4 Mhz helps.  You can do this by changing the 'card.init()'
-statement in a sketch to 'card.init(true)'.  'true' means use a lower
-SPI speed.
+This library will configure the DAC but it will not activate its output. 
 
-The default speed for card.init can be changed to 4 Mhz by changing
-the following line in the WaveHC file SdReader.h from
-#define SPI_DEFAULT_HALF_SPEED false
-to
-#define SPI_DEFAULT_HALF_SPEED true
-
+It is assumed that the sketch will use one of the OpAmp integrated in the
+microcontroller to buffer/amplify the analog signal (as it is done 
+in the examples). The opAmp can drive up to about 20 mA, which may be
+sufficient for a small headset. Otherwise a suitable audio amplifier should be used.
+A low pass filter is also recommended after the DAC (see 
 
 ## PREPARING SD CARDS
 
-WaveHC supports FAT16/FAT32 formats on SD/SDHC cards.  WaveHC only
-supports short 8.3 DOS style file names.
+As the original WaveHC library, WaveDx supports FAT16/FAT32 formats on SD/SDHC cards.  
+WaveDx only supports short 8.3 DOS style file names.
 
-WaveHC is optimized to play contiguous files. It will play 16-bit
+WaveDx is optimized to play contiguous files. It will play 16-bit
 44.1 K files if they are contiguous.  All files copied to a newly
 formatted card will be contiguous. It is only possible to create a
 fragmented file if you delete a file from an SD and copy a another
@@ -87,7 +76,7 @@ I have included several updates examples for WaveHC in the WaveHC/examples
 folder.  More examples can be downloaded from the Adafruit website:
 http://www.ladyada.net/make/waveshield/examples.html
 
-The updated examples are:
+The updated examples are [TODO: update examples]:
 
 `daphc.ino` - plays all .WAV files on an SD.
 
