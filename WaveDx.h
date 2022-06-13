@@ -13,13 +13,13 @@
  *
  */
 
-#ifndef WaveHC_h
-#define WaveHC_h
+#ifndef WaveDx_h
+#define WaveDx_h
 #include "Arduino.h"
 #include <FatReader.h>
 /**
  * \file
- * WaveHC class
+ * WaveDx class
  */
 /**
  * If nonzero, optimize the player for contiguous files.  It takes
@@ -29,8 +29,8 @@
 #define OPTIMIZE_CONTIGUOUS 1
 /**
  * Software volume control should be compatible with Ladyada's library.
- * Uses shift to decrease volume by 6 dB per step. See DAC ISR in WaveHC.cpp.
- * Must be set after call to WaveHC::create().
+ * Uses shift to decrease volume by 6 dB per step. See DAC ISR in WaveDx.cpp.
+ * Must be set after call to WaveDx::create().
  * Decreases MAX_CLOCK_RATE to 22050.
  */
 #define DVOLUME 0
@@ -73,14 +73,14 @@
 
 //------------------------------------------------------------------------------
 /**
- * \class WaveHC
+ * \class WaveDx
  * \brief Wave file player.
  *
  * Play wave files from FAT16 and FAT32 file systems
  * on SD and SDHC flash memory cards.
  *
  */
-class WaveHC {
+class WaveDx {
 public:
   /** Wave file number of channels. Mono = 1, Stereo = 2 */
   uint8_t Channels;
@@ -100,7 +100,7 @@ public:
   /** FatReader instance for current wave file. */
   FatReader *fd;
 
-  WaveHC(void);
+  WaveDx(void);
   uint8_t create(FatReader &f);
   /*!
    @brief Return the size of the WAV file
@@ -117,4 +117,4 @@ public:
   void stop(void);
 };
 
-#endif // WaveHC_h
+#endif // WaveDx_h
