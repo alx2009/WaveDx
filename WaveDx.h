@@ -1,5 +1,5 @@
 /*!
- * @file WaveHC.h
+ * @file WaveDx.h
  *
  * This library is a highly modified version of Ladyada's Wave Shield library.
  * I have made many changes that may have introduced bugs.
