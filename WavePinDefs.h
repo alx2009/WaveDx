@@ -11,6 +11,8 @@
 /** SPI slave select pin. Warning: SS may be redefined as another pin
  but the hardware SS_PIN must be set to output mode before any calls to
  WaveHC functions. The SS_PIN can then be used as a general output pin */
+// Note: the above is not necessary true with the AVR Dx parts TODO: expand and check if there is a need to change behaviour
+
 #define SS SS_PIN
 
 /** SPI master output, slave input pin. */
