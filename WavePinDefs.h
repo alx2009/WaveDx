@@ -5,7 +5,7 @@
 #include <ArduinoPins.h>
 #ifndef WavePinDefs_h
 #define WavePinDefs_h
-
+/*
 // SPI pin definitions
 
 /** SPI slave select pin. Warning: SS may be redefined as another pin
@@ -68,5 +68,5 @@
 /** Port bit number for Latch DAC Input. */
 #define MCP_DAC_LDAC_BIT PIN5_BITNUM
 #endif // USE_MCP_DAC_LDAC
-
+*/
 #endif // WavePinDefs_h
