@@ -23,7 +23,6 @@
 #include <Arduino.h>
 #endif // ARDUINO < 100
 #include <SdReader.h>
-#include <WavePinDefs.h>
 #include "SPIport.h"
 //------------------------------------------------------------------------------
 // inline SPI functions
@@ -139,11 +138,11 @@ uint8_t SdReader::init(uint8_t slow) {
   uint8_t ocr[4];
   uint8_t r;
 
-  pinMode(SS, OUTPUT);
+  pinMode(SS_PIN, OUTPUT);
   digitalWrite(SS, HIGH);
-  pinMode(MOSI, OUTPUT);
+  pinMode(MOSI_PIN, OUTPUT);
   pinMode(MISO_PIN, INPUT);
-  pinMode(SCK, OUTPUT);
+  pinMode(SCK_PIN, OUTPUT);
 
 #if SPI_INIT_SLOW
   // Enable SPI, Master, clock rate f_osc/128
