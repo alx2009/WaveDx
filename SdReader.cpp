@@ -23,7 +23,7 @@
 #include <Arduino.h>
 #endif // ARDUINO < 100
 #include <SdReader.h>
-#include "SPIport.h"
+#include "AVRport.h"
 //------------------------------------------------------------------------------
 // inline SPI functions
 /** Send a byte to the card */
