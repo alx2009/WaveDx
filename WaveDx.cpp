@@ -202,7 +202,7 @@ ISR(TIMER1_COMPA_vect) {
 
       sdstatus = SD_FILLING;
       // interrupt to call SD reader
-      TIMSK1 |= _BV(OCIE1B);
+      TIMSK1 |= _BV(OCIE1B);                  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1B
     } else if (sdstatus == SD_END_FILE) {
       playing->stop();
       return;
@@ -270,10 +270,10 @@ ISR(TIMER1_COMPA_vect) {
 //------------------------------------------------------------------------------
 // this is the interrupt that fills the playbuffer
 
-ISR(TIMER1_COMPB_vect) {
+ISR(TIMER1_COMPB_vect) {              //TIMER1 COMPB vector
 
   // turn off calling interrupt
-  TIMSK1 &= ~_BV(OCIE1B);
+  TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
 
   if (sdstatus != SD_FILLING)
     return;
@@ -421,7 +421,7 @@ uint8_t WaveDx::isPaused(void) {
  */
 void WaveDx::pause(void) {
   cli();
-  TIMSK1 &= ~_BV(OCIE1A); // disable DAC interrupt
+  TIMSK1 &= ~_BV(OCIE1A); // disable DAC interrupt        //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
   sei();
   fd->volume()->rawDevice()->readEnd(); // redo any partial read on resume
 }
@@ -435,6 +435,7 @@ void WaveDx::pause(void) {
  * of the player.
  */
 void WaveDx::play(void) {
+  takeOverTCA();
   // setup the interrupt as necessary
 
   int16_t read;
@@ -464,15 +465,15 @@ void WaveDx::play(void) {
 
   // Set up timer one
   // Normal operation - no pwm not connected to pins
-  TCCR1A = 0;
-  // no prescaling, CTC mode
-  TCCR1B = _BV(WGM12) | _BV(CS10);
+  TCCR1A = 0;                                              //TIMER1 Timer/Counter Control Register A = 0
+  // no prescaling, CTC mode (TOP = OCR1A, Immediate update, TOV1 flag set on MAX)
+  TCCR1B = _BV(WGM12) | _BV(CS10);                         //TIMER1 Timer/Counter Control Register B, clear all except WGM12 and CS10 
   // Sample rate - play stereo interleaved
-  OCR1A = F_CPU / (dwSamplesPerSec * Channels);
+  OCR1A = F_CPU / (dwSamplesPerSec * Channels);            //TIMER1 Timer/Counter Output Compare Register A
   // SD fill interrupt happens at TCNT1 == 1
-  OCR1B = 1;
+  OCR1B = 1;                                               //TIMER1 Timer/Counter Output Compare Register B
   // Enable timer interrupt for DAC ISR
-  TIMSK1 |= _BV(OCIE1A);
+  TIMSK1 |= _BV(OCIE1A);                                   //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
 }
 //------------------------------------------------------------------------------
 /*! Read wave data.
@@ -525,7 +526,7 @@ void WaveDx::resume(void) {
   cli();
   // enable DAC interrupt
   if (isplaying)
-    TIMSK1 |= _BV(OCIE1A);
+    TIMSK1 |= _BV(OCIE1A);  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
   sei();
 }
 //------------------------------------------------------------------------------
@@ -559,6 +560,7 @@ void WaveDx::seek(uint32_t pos) {
  *
  * \param[in] samplerate The new sample rate in samples per second.
  * No checks are done on the input parameter.
+ * Note: in WaveDx this function must be called AFTER play() and BEFORE stop()
  */
 void WaveDx::setSampleRate(uint32_t samplerate) {
   if (samplerate < 500)
@@ -567,16 +569,17 @@ void WaveDx::setSampleRate(uint32_t samplerate) {
     samplerate = 50000;
   // from ladayada's library.
   cli();
-  while (TCNT0 != 0)
+  while (TCNT0 != 0)                    //Wait until Timer0 count = 0 ? Synch with a common prescaler?
     ;
 
-  OCR1A = F_CPU / samplerate;
+  OCR1A = F_CPU / samplerate;           //TIMER1 Output Compare Register A (OCR1A), set to F_CPU
   sei();
 }
 //------------------------------------------------------------------------------
 /** Stop the player. */
 void WaveDx::stop(void) {
-  TIMSK1 &= ~_BV(OCIE1A); // turn off interrupt
+  TIMSK1 &= ~_BV(OCIE1A); // turn off interrupt    //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
   playing->isplaying = 0;
   playing = 0;
+  resumeTCA();
 }
