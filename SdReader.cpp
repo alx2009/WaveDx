@@ -28,14 +28,14 @@
 // inline SPI functions
 /** Send a byte to the card */
 inline void spiSend(uint8_t b) {
-  SPI_PORT.DATA = b;
-  while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+  AVR_SPI_PORT.DATA = b;
+  while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
     ;
 }
 /** Receive a byte from the card */
 inline uint8_t spiRec(void) {
   spiSend(0XFF);
-  return SPI_PORT.DATA;
+  return AVR_SPI_PORT.DATA;
 }
 /** Set Slave Select high */
 inline void spiSSHigh(void) {
@@ -146,16 +146,16 @@ uint8_t SdReader::init(uint8_t slow) {
 
 #if SPI_INIT_SLOW
   // Enable SPI, Master, clock rate f_osc/128
-  SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
+  AVR_SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV128_gc; /* prescaler in div16 mode */
-  SPI_PORT.CTRLB = 0x04; (Normal buffer mode, disable slave select, SPI mode 0)
+  AVR_SPI_PORT.CTRLB = 0x04; (Normal buffer mode, disable slave select, SPI mode 0)
 #else  // SPI_INIT_SLOW
   // Enable SPI, Master, clock rate f_osc/64
-  SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
+  AVR_SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV64_gc; /* prescaler in div128 mode */
-  SPI_PORT.CTRLB = 0x04; //Normal buffer mode, disable slave select, SPI mode 0
+  AVR_SPI_PORT.CTRLB = 0x04; //Normal buffer mode, disable slave select, SPI mode 0
 #endif // SPI_INIT_SLOW
 
   // must supply min of 74 clock cycles with CS high.
@@ -220,12 +220,12 @@ uint8_t SdReader::init(uint8_t slow) {
   }
 
   // use max SPI frequency unless slow is true
-  SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
+  AVR_SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV4_gc;  /* prescaler in div4 mode */
 
   if (!slow)
-    SPI_PORT.CTRLA |= SPI_CLK2X_bm; // Doubled Clock Frequency: f_OSC/2
+    AVR_SPI_PORT.CTRLA |= SPI_CLK2X_bm; // Doubled Clock Frequency: f_OSC/2
   spiSSHigh();
   return true;
 }
@@ -265,28 +265,28 @@ uint8_t SdReader::readData(uint32_t block, uint16_t offset, uint8_t *dst,
   }
 
   // start first SPI transfer
-  SPI_PORT.DATA = 0XFF;
+  AVR_SPI_PORT.DATA = 0XFF;
 
   // skip data before offset
   for (; offset_ < offset; offset_++) {
-    while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+    while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
       ;
-    SPI_PORT.DATA = 0XFF;
+    AVR_SPI_PORT.DATA = 0XFF;
   }
 
   // transfer data
   uint16_t n = count - 1;
   for (uint16_t i = 0; i < n; i++) {
-    while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+    while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
       ;
-    dst[i] = SPI_PORT.DATA;
-    SPI_PORT.DATA = 0XFF;
+    dst[i] = AVR_SPI_PORT.DATA;
+    AVR_SPI_PORT.DATA = 0XFF;
   }
 
   // wait for last byte
-  while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+  while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
     ;
-  dst[n] = SPI_PORT.DATA;
+  dst[n] = AVR_SPI_PORT.DATA;
   offset_ += count;
   if (!partialBlockRead_ || offset_ >= 512)
     readEnd();
@@ -297,14 +297,14 @@ uint8_t SdReader::readData(uint32_t block, uint16_t offset, uint8_t *dst,
 void SdReader::readEnd(void) {
   if (inBlock_) {
     // skip data and crc
-    SPI_PORT.DATA = 0XFF;
+    AVR_SPI_PORT.DATA = 0XFF;
     while (offset_++ < 513) {
-        while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+        while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
             ;
-      SPI_PORT.DATA = 0XFF;
+      AVR_SPI_PORT.DATA = 0XFF;
     }
     // wait for last crc byte
-    while (!(SPI_PORT.INTFLAGS & SPI_IF_bm))
+    while (!(AVR_SPI_PORT.INTFLAGS & SPI_IF_bm))
       ;
     spiSSHigh();
     inBlock_ = 0;
