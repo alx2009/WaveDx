@@ -21,9 +21,13 @@
 #define AVR_SPI_PORT SPI0
 
 #ifdef DB_28_PINS
-#   define AVR_TCB_PORT   TCB1
+#   define AVR_TCA_PORT   TCA0
+    inline takeOverTCA() {takeOverTCA0();}
+    inline resumeTCA() {resumeTCA0();}
 #else
-#   define AVR_TCB_PORT   TCB3
+#   define AVR_TCA_PORT   TCA1
+    inline takeOverTCA() {takeOverTCA1();}
+    inline resumeTCA() {resumeTCA1();}
 #endif
 
 
