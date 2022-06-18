@@ -188,7 +188,8 @@ uint8_t sdstatus = 0;
 
 //------------------------------------------------------------------------------
 // timer interrupt for DAC
-ISR(TIMER1_COMPA_vect) {
+ISR(TCA_OVF_vect) {
+  AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;  // Clear flag
   if (!playing)
     return;
 
@@ -202,7 +203,8 @@ ISR(TIMER1_COMPA_vect) {
 
       sdstatus = SD_FILLING;
       // interrupt to call SD reader
-      TIMSK1 |= _BV(OCIE1B);                  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1B
+      //TIMSK1 |= _BV(OCIE1B);                  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1B
+      AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
     } else if (sdstatus == SD_END_FILE) {
       playing->stop();
       return;
@@ -270,10 +272,12 @@ ISR(TIMER1_COMPA_vect) {
 //------------------------------------------------------------------------------
 // this is the interrupt that fills the playbuffer
 
-ISR(TIMER1_COMPB_vect) {              //TIMER1 COMPB vector
+ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
 
   // turn off calling interrupt
-  TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
+  AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_CMP0_bm;  // Clear flag
+  //TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
+  AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP0_bm)); // Disable interrupt
 
   if (sdstatus != SD_FILLING)
     return;
@@ -411,7 +415,8 @@ uint8_t WaveDx::create(FatReader &f) {
  */
 uint8_t WaveDx::isPaused(void) {
   cli();
-  uint8_t rtn = isplaying && !(TIMSK1 & _BV(OCIE1A));
+  //uint8_t rtn = isplaying && !(TIMSK1 & _BV(OCIE1A)); //TIMER1 
+  uint8_t rtn = isplaying && !(AVR_TCA_PORT.SINGLE.INTCTRL & TCA_SINGLE_OVF_bm);
   sei();
   return rtn;
 }
@@ -421,7 +426,8 @@ uint8_t WaveDx::isPaused(void) {
  */
 void WaveDx::pause(void) {
   cli();
-  TIMSK1 &= ~_BV(OCIE1A); // disable DAC interrupt        //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
+  //TIMSK1 &= ~_BV(OCIE1A); // disable DAC interrupt        //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
+  AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_OVF_bm)); // Disable interrupt
   sei();
   fd->volume()->rawDevice()->readEnd(); // redo any partial read on resume
 }
@@ -435,7 +441,6 @@ void WaveDx::pause(void) {
  * of the player.
  */
 void WaveDx::play(void) {
-  takeOverTCA();
   // setup the interrupt as necessary
 
   int16_t read;
@@ -463,7 +468,17 @@ void WaveDx::play(void) {
   // Setup mode for DAC ports
   mcpDacInit();
 
-  // Set up timer one
+  //Set up TCA
+  takeOverTCA(); //dxCore function - force the core to stop using the timer and reset to the startup configuration
+  AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;         // Enable overflow interrupt
+  AVR_TCA_PORT.SINGLE.CTRLB = TCA_SINGLE_WGMODE_NORMAL_gc; // Normal mode. Disabled: Compare outputs, lock update. 
+  AVR_TCA_PORT.SINGLE.EVCTRL &= ~(TCA_SINGLE_CNTEI_bm);    // Disable event counting
+  AVR_TCA_PORT.SINGLE.PER = F_CPU / (dwSamplesPerSec * Channels);
+  AVR_TCA_PORT.SINGLE.CMP0 = 1;
+  AVR_TCA_PORT.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1_gc | TCA_SINGLE_ENABLE_bm;  // start timer with clock DIV1
+
+/*
+  // Set up timer one ==> TCA
   // Normal operation - no pwm not connected to pins
   TCCR1A = 0;                                              //TIMER1 Timer/Counter Control Register A = 0
   // no prescaling, CTC mode (TOP = OCR1A, Immediate update, TOV1 flag set on MAX)
@@ -474,6 +489,7 @@ void WaveDx::play(void) {
   OCR1B = 1;                                               //TIMER1 Timer/Counter Output Compare Register B
   // Enable timer interrupt for DAC ISR
   TIMSK1 |= _BV(OCIE1A);                                   //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
+  */
 }
 //------------------------------------------------------------------------------
 /*! Read wave data.
@@ -527,6 +543,7 @@ void WaveDx::resume(void) {
   // enable DAC interrupt
   if (isplaying)
     TIMSK1 |= _BV(OCIE1A);  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
+    AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm; // Enable interrupt
   sei();
 }
 //------------------------------------------------------------------------------
@@ -569,16 +586,18 @@ void WaveDx::setSampleRate(uint32_t samplerate) {
     samplerate = 50000;
   // from ladayada's library.
   cli();
-  while (TCNT0 != 0)                    //Wait until Timer0 count = 0 ? Synch with a common prescaler?
+  while (AVR_TCA_PORT.SINGLE.CNT != 0)     // Synch update 
     ;
 
-  OCR1A = F_CPU / samplerate;           //TIMER1 Output Compare Register A (OCR1A), set to F_CPU
+  //OCR1A = F_CPU / samplerate;           //TIMER1 Output Compare Register A (OCR1A), set to F_CPU
+  AVR_TCA_PORT.SINGLE.PER = F_CPU / samplerate;
   sei();
 }
 //------------------------------------------------------------------------------
 /** Stop the player. */
 void WaveDx::stop(void) {
-  TIMSK1 &= ~_BV(OCIE1A); // turn off interrupt    //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
+  //TIMSK1 &= ~_BV(OCIE1A); // turn off interrupt    //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1A
+  AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_OVF_bm)); // Disable interrupt
   playing->isplaying = 0;
   playing = 0;
   resumeTCA();
