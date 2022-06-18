@@ -22,10 +22,14 @@
 
 #ifdef DB_28_PINS
 #   define AVR_TCA_PORT   TCA0
+#   define TCA_OVF_vect TCA0_OVF_vect
+#   define TCA_CMP0_vect TCA0_CMP0_vect
     inline takeOverTCA() {takeOverTCA0();}
     inline resumeTCA() {resumeTCA0();}
 #else
 #   define AVR_TCA_PORT   TCA1
+#   define TCA_OVF_vect TCA1_OVF_vect
+#   define TCA_CMP0_vect TCA1_CMP0_vect
     inline takeOverTCA() {takeOverTCA1();}
     inline resumeTCA() {resumeTCA1();}
 #endif
