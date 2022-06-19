@@ -12,7 +12,7 @@
 // TCD0 ==> PWM
 // RTC
 
-* not availble for 28 and 32 pin AVRs
+//* not availble for 28 and 32 pin AVRs
 
 
 #ifndef AVR_PORT_H
@@ -24,14 +24,16 @@
 #   define AVR_TCA_PORT   TCA0
 #   define TCA_OVF_vect TCA0_OVF_vect
 #   define TCA_CMP0_vect TCA0_CMP0_vect
-    inline takeOverTCA() {takeOverTCA0();}
-    inline resumeTCA() {resumeTCA0();}
+    inline void takeOverTCA() {takeOverTCA0();}
+    inline void resumeTCA() {resumeTCA0();}
+#   define DBG_SERIAL Serial    
 #else
 #   define AVR_TCA_PORT   TCA1
 #   define TCA_OVF_vect TCA1_OVF_vect
 #   define TCA_CMP0_vect TCA1_CMP0_vect
-    inline takeOverTCA() {takeOverTCA1();}
-    inline resumeTCA() {resumeTCA1();}
+    inline void takeOverTCA() {takeOverTCA1();}
+    inline void resumeTCA() {resumeTCA1();}
+#   define DBG_SERIAL Serial3    
 #endif
 
 

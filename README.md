@@ -1,6 +1,7 @@
 # ALX2009 WaveDx Library
 
-WORK IN PROGRESS - DO NOT USE YET!
+WORK IN PROGRESS
+Status (2022-06-19): Supports only AVRxxDB28 and AVRxxDB48. Everything compiles but it has not been tested yet  
 
 This library is a fork of the Adafruit WaveHC library, ported to the AVR Dx architecture and using the built in DAC
 

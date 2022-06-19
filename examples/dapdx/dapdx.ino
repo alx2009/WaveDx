@@ -1,13 +1,13 @@
 /*
  * This example plays every .WAV file it finds on the SD card in a loop
  */
-#include <WaveHC.h>
+#include <WaveDx.h>
 #include <WaveUtil.h>
 
 SdReader card;    // This object holds the information for the card
 FatVolume vol;    // This holds the information for the partition on the card
 FatReader root;   // This holds the information for the volumes root directory
-WaveHC wave;      // This is the only wave (audio) object, since we will only play one at a time
+WaveDx wave;      // This is the only wave (audio) object, since we will only play one at a time
 
 uint8_t dirLevel; // indent level for file/dir names    (for prettyprinting)
 dir_t dirBuf;     // buffer for directory reads

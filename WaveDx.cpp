@@ -1,5 +1,5 @@
-/* Arduino WaveDx Library, a port of WaveHC to AVR Dx architecture
- * Original work WaveHC.cpp Copyright (C) 2009 by William Greiman
+/* Arduino WaveDx Library, a port of WaveDx to AVR Dx architecture
+ * Original work WaveDx.cpp Copyright (C) 2009 by William Greiman
  * Derived work WaveDx.cpp Copyright (C) 2022 ALX2009
  *
  * This file is part of the Arduino WaveDx Library
@@ -60,17 +60,17 @@ wave shields to reduce this to 4 Mhz. See SdReader::init() for details.
 SanDisk cards generally have good performance in the Version 1.0 Wave Shield.
 
 
-\section WaveHCClass WaveHC Usage
+\section WaveDxClass WaveDx Usage
 
 See Ladyada's excellent tutorial on using WaveHC:
 
 http://www.ladyada.net/make/waveshield/libraryhc.html
 
-Also see the readme.txt file for instructions on installing WaveHC.
+Also see the readme.txt file for instructions on installing WaveDx.
 
-Advanced users may need to edit the WavePinDefs.h file.
+Advanced users may need to edit the ArduinoPins.h file.
 
-WaveHC uses a slightly restricted form of short file names.
+WaveDx uses a slightly restricted form of short file names.
 Only printable ASCII characters are supported. No characters with code point
 values greater than 127 are allowed.  Space is not allowed even though space
 was allowed in the API of early versions of DOS.
@@ -84,9 +84,9 @@ $ % ' - _ @ ~ ` ! ( ) { } ^ # &
 Short names are always converted to upper case and their original case
 value is lost.
 
-\section HowTo How to Format and Prepare SD Cards for WaveHC
+\section HowTo How to Format and Prepare SD Cards for WaveDx
 
-WaveHC is optimized for contiguous files.  It will only play 16-bit
+WaveDx is optimized for contiguous files.  It will only play 16-bit
 44.1 K files if they are contiguous.  All files copied to a newly
 formatted card will be contiguous.  It is only possible to create
 a fragmented file if you delete a file from an SD and copy a larger
@@ -163,15 +163,16 @@ http://www.atmel.com/dyn/resources/prod_documents/doc8161.pdf
 #include <WaveDx.h>
 #include <WaveUtil.h>
 #include <avr/interrupt.h>
-#include <mcpDac.h>
+//#include <mcpDac.h>
 #include <string.h>
+#include "AVRport.h"
 
 // verify program assumptions
 #if PLAYBUFFLEN != 256 && PLAYBUFFLEN != 512
 #error PLAYBUFFLEN must be 256 or 512
 #endif // PLAYBUFFLEN
 
-WaveHC *playing = 0;
+WaveDx *playing = 0;
 
 uint8_t buffer1[PLAYBUFFLEN];
 uint8_t buffer2[PLAYBUFFLEN];
@@ -238,44 +239,16 @@ ISR(TCA_OVF_vect) {
   dh = tmp >> 8;
   dl = tmp;
 #endif // DVOLUME
-
-  // dac chip select low
-  mcpDacCsLow();
-
-  // send DAC config bits
-  mcpDacSdiLow();
-  mcpDacSckPulse(); // DAC A
-  mcpDacSckPulse(); // unbuffered
-  mcpDacSdiHigh();
-  mcpDacSckPulse(); // 1X gain
-  mcpDacSckPulse(); // no SHDN
-
-  // send high 8 bits
-  mcpDacSendBit(dh, 7);
-  mcpDacSendBit(dh, 6);
-  mcpDacSendBit(dh, 5);
-  mcpDacSendBit(dh, 4);
-  mcpDacSendBit(dh, 3);
-  mcpDacSendBit(dh, 2);
-  mcpDacSendBit(dh, 1);
-  mcpDacSendBit(dh, 0);
-
-  // send low 4 bits
-  mcpDacSendBit(dl, 7);
-  mcpDacSendBit(dl, 6);
-  mcpDacSendBit(dl, 5);
-  mcpDacSendBit(dl, 4);
-
-  // chip select high - done
-  mcpDacCsHigh();
+// The built in DAC is 10 bits. We can only use DH plus the 2 MSB in DL... For best quality and higher efficiency use an external volume control (DVOLUME not recommended)
+DAC0.DATAL = dl & 0xC0;
+DAC0.DATAH = dh; 
 }
 //------------------------------------------------------------------------------
 // this is the interrupt that fills the playbuffer
 
 ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
-
-  // turn off calling interrupt
   AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_CMP0_bm;  // Clear flag
+  // turn off calling interrupt
   //TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
   AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP0_bm)); // Disable interrupt
 
@@ -297,8 +270,8 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
   }
 }
 //------------------------------------------------------------------------------
-/** create an instance of WaveHC. */
-WaveHC::WaveHC(void) { fd = 0; }
+/** create an instance of WaveDx. */
+WaveDx::WaveDx(void) { fd = 0; }
 //------------------------------------------------------------------------------
 /**
  * Read a wave file's metadata and initialize member variables.
@@ -308,13 +281,13 @@ WaveHC::WaveHC(void) { fd = 0; }
  * \return The value one, true, is returned for success and
  * the value zero, false, is returned for failure.  Reasons
  * for failure include I/O error, an invalid wave file or a wave
- *  file with features that WaveHC does not support.
+ *  file with features that WaveDx does not support.
  */
 uint8_t WaveDx::create(FatReader &f) {
   // 18 byte buffer
   // can use this since Arduino and RIFF are Little Endian
   if (!DVOLUME) {
-    Serial.println("DVOLUME must be set to non-zero in WaveHC.h");
+    DBG_SERIAL.println("DVOLUME must be set to non-zero in WaveDx.h");
     return false;
   }
   union {
@@ -431,13 +404,24 @@ void WaveDx::pause(void) {
   sei();
   fd->volume()->rawDevice()->readEnd(); // redo any partial read on resume
 }
+
+void avrDACinit() {
+    // Disable Digital Input buffer on DAC0 pin as requird by the data sheet
+    pinConfigure(PIN_PD6, PIN_ISC_DISABLE);
+ 
+    DACReference(INTERNAL1V024);
+    //DACReference(VDD);
+    // enable DAC
+    DAC0.CTRLA |= (DAC_OUTEN_bm | DAC_ENABLE_bm);  
+}
+
 //------------------------------------------------------------------------------
 /**
  * Play a wave file.
  *
  * WaveDx::create() must be called before a file can be played.
  *
- * Check the member variable WaveHC::isplaying to monitor the status
+ * Check the member variable WaveDx::isplaying to monitor the status
  * of the player.
  */
 void WaveDx::play(void) {
@@ -466,7 +450,8 @@ void WaveDx::play(void) {
   isplaying = 1;
 
   // Setup mode for DAC ports
-  mcpDacInit();
+  //mcpDacInit();
+  avrDACinit();
 
   //Set up TCA
   takeOverTCA(); //dxCore function - force the core to stop using the timer and reset to the startup configuration
@@ -542,7 +527,7 @@ void WaveDx::resume(void) {
   cli();
   // enable DAC interrupt
   if (isplaying)
-    TIMSK1 |= _BV(OCIE1A);  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
+    //TIMSK1 |= _BV(OCIE1A);  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1A
     AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm; // Enable interrupt
   sei();
 }

@@ -24,6 +24,7 @@
 #include <Arduino.h>
 #endif // ARDUINO
 #include <FatReader.h>
+#include "AVRport.h"
 //------------------------------------------------------------------------------
 /**
  *  Format the name field of the dir_t struct \a dir into the 13 byte array
@@ -51,12 +52,12 @@ void printEntryName(dir_t &dir) {
     if (dir.name[i] == ' ')
       continue;
     if (i == 8)
-      Serial.write('.');
-    Serial.write(dir.name[i]);
+      DBG_SERIAL.write('.');
+    DBG_SERIAL.write(dir.name[i]);
   }
   if (DIR_IS_SUBDIR(dir)) {
     // indicate subdirectory
-    Serial.write('/');
+    DBG_SERIAL.write('/');
   }
 }
 
@@ -78,12 +79,12 @@ void FatReader::lsR(dir_t &d, uint8_t flags, uint8_t indent) {
 
     // print any indent spaces
     for (int8_t i = 0; i < indent; i++) {
-      Serial.write(' ');
+      DBG_SERIAL.write(' ');
     }
     printEntryName(d);
 
     if (DIR_IS_SUBDIR(d)) {
-      Serial.println();
+      DBG_SERIAL.println();
       // recursive call if LS_R
       if (flags & LS_R) {
         FatReader s;
@@ -98,14 +99,14 @@ void FatReader::lsR(dir_t &d, uint8_t flags, uint8_t indent) {
 
         // fragmented if has clusters and not contiguous
         char f = c && !vol_->chainIsContiguous(c) ? '*' : ' ';
-        Serial.write(' ');
-        Serial.write(f);
+        DBG_SERIAL.write(' ');
+        DBG_SERIAL.write(f);
       }
       if (flags & LS_SIZE) {
-        Serial.write(' ');
-        Serial.print(d.fileSize);
+        DBG_SERIAL.write(' ');
+        DBG_SERIAL.print(d.fileSize);
       }
-      Serial.println();
+      DBG_SERIAL.println();
     }
   }
 }

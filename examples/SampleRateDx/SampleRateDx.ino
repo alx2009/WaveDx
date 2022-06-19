@@ -1,19 +1,16 @@
 /*
- * DVOLUME must be set nonzero in WaveHC.h to use this example.
+ * Adafruit SampleRateMod.pde example modified to use WaveHC.
  *
- * Adafruit SoftVolumeChange.pde modified to use WaveHC library.
- *
- * Play files with software volume control.
-
+ * Play files with sample rate controlled by voltage on analog pin zero.
  */
-#include <WaveHC.h>
+#include <WaveDx.h>
 #include <WaveUtil.h>
 
 SdReader card;    // This object holds the information for the card
 FatVolume vol;    // This holds the information for the partition on the card
 FatReader root;   // This holds the information for the volumes root directory
 FatReader file;   // This object represent the WAV file
-WaveHC wave;      // This is the only wave (audio) object, since we will only play one at a time
+WaveDx wave;      // This is the only wave (audio) object, since we will only play one at a time
 
 /*
  * Define macro to put error messages in flash memory
@@ -36,7 +33,7 @@ void setup() {
     error("No partition!");
   }
   if (!root.openRoot(vol)) {
-    error("Couldn't open root"); return;
+    error("Couldn't open root");
   }
   putstring_nl("Files found:");
   root.ls();
@@ -47,8 +44,8 @@ void playcomplete(FatReader &file);
 
 //////////////////////////////////// LOOP
 void loop() { 
-  uint8_t i, r;
-  char c, name[15];
+  //uint8_t i, r;      // declared in the original example from WaveHC but never used
+  //char c, name[15];  // declared in the original example from WaveHC but never used
   dir_t dir;
 
   root.rewind();
@@ -70,7 +67,6 @@ void loop() {
     file.close();    
   }
 }
-
 /////////////////////////////////// HELPERS
 /*
  * print error message and halt
@@ -92,26 +88,44 @@ void sdErrorCheck(void) {
   Serial.println(card.errorData(), HEX);
   while(1);
 }
+int16_t lastpotval = 0;
+#define HYSTERESIS 3
 /*
- * Play files with software volume control
+ * play file with sample rate changes
  */
 void playcomplete(FatReader &file) {
-  if (!wave.create(file)) {
+  int16_t potval;
+  uint32_t newsamplerate;
+  
+   if (!wave.create(file)) {
      putstring_nl(" Not a valid WAV"); return;
-  }
+   }
    // ok time to play!
-  wave.play();
+   wave.play();
+   
   while (wave.isplaying) {
-    putstring("Vol: ");
-    
-    // DVOLUME must be nonzero in WaveHC.h to use volume.
-    Serial.println(wave.volume, DEC);
-     
-    delay(2000);
-    wave.volume++;
-    if ( wave.volume == 12) {
-      wave.volume = 0;
-    }
-  }
-  sdErrorCheck();
+     potval = analogRead(0);
+     if ( ((potval - lastpotval) > HYSTERESIS) || ((lastpotval - potval) > HYSTERESIS)) {
+         putstring("pot = ");
+         Serial.println(potval, DEC); 
+         putstring("tickspersam = ");
+         Serial.print(wave.dwSamplesPerSec, DEC);
+         putstring(" -> ");
+         newsamplerate = wave.dwSamplesPerSec;
+         newsamplerate *= potval;
+         newsamplerate /= 512;   // we want to 'split' between sped up and slowed down.
+        if (newsamplerate > 24000) {
+          newsamplerate = 24000;  
+        }
+        if (newsamplerate < 1000) {
+          newsamplerate = 1000;  
+        }        
+        wave.setSampleRate(newsamplerate);
+        
+        Serial.println(newsamplerate, DEC);
+        lastpotval = potval;
+     }
+     delay(100);
+   }
+   sdErrorCheck();
 }

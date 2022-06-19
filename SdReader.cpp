@@ -24,6 +24,7 @@
 #endif // ARDUINO < 100
 #include <SdReader.h>
 #include "AVRport.h"
+#include "ArduinoPins.h"
 //------------------------------------------------------------------------------
 // inline SPI functions
 /** Send a byte to the card */
@@ -135,7 +136,7 @@ uint32_t SdReader::cardSize(void) {
  *
  */
 uint8_t SdReader::init(uint8_t slow) {
-  uint8_t ocr[4];
+  //uint8_t ocr[4];  //Note: this paramter was present in WaveHC but not used
   uint8_t r;
 
   pinMode(SS_PIN, OUTPUT);

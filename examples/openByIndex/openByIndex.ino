@@ -16,14 +16,14 @@
  * play by index.
  */
 
-#include <WaveHC.h>
+#include <WaveDx.h>
 #include <WaveUtil.h>
 
 SdReader card;    // This object holds the information for the card
 FatVolume vol;    // This holds the information for the partition on the card
 FatReader root;   // This holds the information for the volumes root directory
 FatReader file;   // This object represent the WAV file 
-WaveHC wave;      // This is the only wave (audio) object, since we will only play one at a time
+WaveDx wave;      // This is the only wave (audio) object, since we will only play one at a time
 
 // time to play each tone in milliseconds
 #define PLAY_TIME 200

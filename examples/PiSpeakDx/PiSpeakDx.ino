@@ -2,7 +2,7 @@
  * Text-to-speech example to speak the first n digits of pi.
  * The number is stored in flash, each digit is spoken one at a time.
  */
-#include <WaveHC.h>
+#include <WaveDx.h>
 #include <WaveUtil.h>
 
 // put pi in flash memory
@@ -12,7 +12,7 @@ SdReader card;    // This object holds the information for the card
 FatVolume vol;    // This holds the information for the partition on the card
 FatReader root;   // This holds the information for the volumes root directory
 FatReader file;   // This object represent the WAV file for a pi digit or period
-WaveHC wave;      // This is the only wave (audio) object, since we will only play one at a time
+WaveDx wave;      // This is the only wave (audio) object, since we will only play one at a time
 /*
  * Define macro to put error messages in flash memory
  */
@@ -64,7 +64,7 @@ void loop() {
 
 char filename[13];
 void speaknum(char c) {
-  uint8_t i=0;
+  //uint8_t i=0;  // In original example from WaveHC i was set bu never actiually used
   
   // copy flash string for 'period' to filename
   strcpy_P(filename, PSTR("P.WAV"));
@@ -72,9 +72,8 @@ void speaknum(char c) {
   if ('0' <= c && c <= '9') {
     // digit - change 'P' to digit
     filename[0] = c;
-    i = 1;
-  } 
-  else if (c != '.') {
+    //i = 1; // In original example from WaveHC i was set bu never actiually used
+  } else if (c != '.') {
     // error if not period
     return;
   }

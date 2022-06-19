@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #endif // ARDUINO
 #include <WaveUtil.h>
+#include "AVRport.h"
 //------------------------------------------------------------------------------
 /** Return the number of bytes currently free in RAM. */
 int FreeRam(void) {
@@ -28,7 +29,7 @@ int FreeRam(void) {
  */
 void SerialPrint_P(PGM_P str) {
   for (uint8_t c; (c = pgm_read_byte(str)); str++)
-    Serial.write(c);
+    DBG_SERIAL.write(c);
 }
 //------------------------------------------------------------------------------
 /**
@@ -38,5 +39,5 @@ void SerialPrint_P(PGM_P str) {
  */
 void SerialPrintln_P(PGM_P str) {
   SerialPrint_P(str);
-  Serial.println();
+  DBG_SERIAL.println();
 }
