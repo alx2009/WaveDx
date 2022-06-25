@@ -40,12 +40,12 @@ inline uint8_t spiRec(void) {
 }
 /** Set Slave Select high */
 inline void spiSSHigh(void) {
-  digitalWrite(SS, HIGH);
+  digitalWrite(SS_PIN, HIGH);
   // insure SD data out is high Z
   spiSend(0XFF);
 }
 /** Set Slave Select low */
-inline void spiSSLow(void) { digitalWrite(SS, LOW); }
+inline void spiSSLow(void) { digitalWrite(SS_PIN, LOW); }
 //------------------------------------------------------------------------------
 // card status
 /** status for card in the ready state */
@@ -140,45 +140,54 @@ uint8_t SdReader::init(uint8_t slow) {
   uint8_t r;
 
   pinMode(SS_PIN, OUTPUT);
-  digitalWrite(SS, HIGH);
+  digitalWrite(SS_PIN, HIGH);
   pinMode(MOSI_PIN, OUTPUT);
   pinMode(MISO_PIN, INPUT);
   pinMode(SCK_PIN, OUTPUT);
 
 #if SPI_INIT_SLOW
   // Enable SPI, Master, clock rate f_osc/128
+  AVR_SPI_PORT.CTRLB = 0x04; (Normal buffer mode, disable slave select, SPI mode 0)
   AVR_SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV128_gc; /* prescaler in div16 mode */
-  AVR_SPI_PORT.CTRLB = 0x04; (Normal buffer mode, disable slave select, SPI mode 0)
 #else  // SPI_INIT_SLOW
   // Enable SPI, Master, clock rate f_osc/64
+  AVR_SPI_PORT.CTRLB = 0x04; //Normal buffer mode, disable slave select, SPI mode 0
   AVR_SPI_PORT.CTRLA = SPI_ENABLE_bm       /* Enable module */
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV64_gc; /* prescaler in div128 mode */
-  AVR_SPI_PORT.CTRLB = 0x04; //Normal buffer mode, disable slave select, SPI mode 0
 #endif // SPI_INIT_SLOW
+  //DBG_SERIAL.println("SPI port setup");
 
   // must supply min of 74 clock cycles with CS high.
   for (uint8_t i = 0; i < 10; i++)
     spiSend(0XFF);
-
+  //DBG_SERIAL.println("74 clock cycles with CS high: done");
+  
   // next two lines prevent re-init hang by cards that were in partial read
   spiSSLow();
+  //DBG_SERIAL.println("After spiSSLow");
   for (uint16_t i = 0; i <= 512; i++)
     spiRec();
+  //DBG_SERIAL.println("After dummy spiRec");
 
   // command to go idle in SPI mode
   for (uint8_t retry = 0;; retry++) {
-    if ((r = cardCommand(CMD0, 0)) == R1_IDLE_STATE)
-      break;
+    if ((r = cardCommand(CMD0, 0)) == R1_IDLE_STATE) {
+        //DBG_SERIAL.println("R1_IDLE_STATE");
+        break;
+    }
     if (retry == 10) {
       error(SD_CARD_ERROR_CMD0, r);
+      //DBG_SERIAL.println("retry == 10!");
       return false;
     }
   }
+  //DBG_SERIAL.println("SD card is now idle");
   // check SD version
   r = cardCommand(CMD8, 0x1AA);
+  //DBG_SERIAL.println("After CMD8");
   if (r == R1_IDLE_STATE) {
     for (uint8_t i = 0; i < 4; i++) {
       r = spiRec();
@@ -193,6 +202,7 @@ uint8_t SdReader::init(uint8_t slow) {
   } else {
     error(SD_CARD_ERROR_CMD8, r);
   }
+  //DBG_SERIAL.println("SD version check: done");
   // initialize card and send host supports SDHC if SD2
   for (uint16_t t0 = millis();;) {
     cardCommand(CMD55, 0);
@@ -206,6 +216,7 @@ uint8_t SdReader::init(uint8_t slow) {
       return false;
     }
   }
+  //DBG_SERIAL.println("Ca4rd initialization: done");
   // if SD2 read OCR register to check for SDHC card
   if (type() == SD_CARD_TYPE_SD2) {
     if (cardCommand(CMD58, 0)) {
@@ -225,9 +236,11 @@ uint8_t SdReader::init(uint8_t slow) {
                  | SPI_MASTER_bm       /* SPI module in Master mode */
                  | SPI_PRESC_DIV4_gc;  /* prescaler in div4 mode */
 
+  //DBG_SERIAL.println("SPI Port re-initialized (high speed)");
   if (!slow)
     AVR_SPI_PORT.CTRLA |= SPI_CLK2X_bm; // Doubled Clock Frequency: f_OSC/2
   spiSSHigh();
+  //DBG_SERIAL.println("After spiSSHigh");
   return true;
 }
 //------------------------------------------------------------------------------
