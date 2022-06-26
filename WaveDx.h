@@ -34,7 +34,7 @@
  * Must be set after call to WaveDx::create().
  * Decreases MAX_CLOCK_RATE to 22050.
  */
-#define DVOLUME 0
+//#define DVOLUME 0
 /**
  * Set behavior for files that exceed MAX_CLOCK_RATE or MAX_BYTE_RATE.
  * If RATE_ERROR_LEVEL = 2, rate too high errors are fatal.
@@ -42,6 +42,11 @@
  * If RATE_ERROR_LEVEL = 0, rate too high errors are ignored.
  */
 #define RATE_ERROR_LEVEL 2
+
+/**
+ * If defined, set a pin at the beginning and end of the Timer interrupt handlers. PINs are defined in ArduinoPins.h
+ */
+#define MONITOR_INTERRUPT_HANDLERS 1
 //------------------------------------------------------------------------------
 // Set the size for wave data buffers.  Must be 256 or 512.
 #if defined(__AVR_ATmega168P__) || defined(__AVR_ATmega168__)
@@ -64,7 +69,7 @@
 #endif // MAX_BYTE_RATE
 
 // Define maximum clock rate for DAC.
-#if !DVOLUME
+#ifdef DVOLUME
 /** maximum DAC clock rate */
 #define MAX_CLOCK_RATE 44100
 #else // DVOLUME
@@ -116,6 +121,8 @@ public:
   void seek(uint32_t pos);
   void setSampleRate(uint32_t samplerate);
   void stop(void);
+
+  void debugPrint();
 };
 
 #endif // WaveDx_h
