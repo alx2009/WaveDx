@@ -23,6 +23,7 @@
 #ifdef DB_28_PINS
 #   define AVR_TCA_PORT   TCA0
 #   define TCA_OVF_vect TCA0_OVF_vect
+#   define TCA_OVF_vect_num 9
 #   define TCA_CMP0_vect TCA0_CMP0_vect
     inline void takeOverTCA() {takeOverTCA0();}
     inline void resumeTCA() {resumeTCA0();}
@@ -30,6 +31,7 @@
 #else
 #   define AVR_TCA_PORT   TCA1
 #   define TCA_OVF_vect TCA1_OVF_vect
+#   define TCA_OVF_vect_num 47
 #   define TCA_CMP0_vect TCA1_CMP0_vect
     inline void takeOverTCA() {takeOverTCA1();}
     inline void resumeTCA() {resumeTCA1();}
