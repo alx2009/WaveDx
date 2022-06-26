@@ -166,6 +166,7 @@ http://www.atmel.com/dyn/resources/prod_documents/doc8161.pdf
 //#include <mcpDac.h>
 #include <string.h>
 #include "AVRport.h"
+#include "ArduinoPins.h"
 
 // verify program assumptions
 #if PLAYBUFFLEN != 256 && PLAYBUFFLEN != 512
@@ -190,9 +191,16 @@ uint8_t sdstatus = 0;
 //------------------------------------------------------------------------------
 // timer interrupt for DAC
 ISR(TCA_OVF_vect) {
+# ifdef MONITOR_INTERRUPT_HANDLERS
+     OVF_MONITOR_SET;
+# endif //MONITOR_INTERRUPT_HANDLERS
   AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;  // Clear flag
-  if (!playing)
+  if (!playing) {
+#    ifdef MONITOR_INTERRUPT_HANDLERS
+        OVF_MONITOR_CLR;
+#    endif //MONITOR_INTERRUPT_HANDLERS
     return;
+  }
 
   if (playpos >= playend) {
     if (sdstatus == SD_READY) {
@@ -205,15 +213,21 @@ ISR(TCA_OVF_vect) {
       sdstatus = SD_FILLING;
       // interrupt to call SD reader
       //TIMSK1 |= _BV(OCIE1B);                  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1B
-      AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
+      AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
     } else if (sdstatus == SD_END_FILE) {
       playing->stop();
+#     ifdef MONITOR_INTERRUPT_HANDLERS
+           OVF_MONITOR_CLR;
+#     endif //MONITOR_INTERRUPT_HANDLERS
       return;
     } else {
       // count overrun error if not at end of file
       if (playing->remainingBytesInChunk) {
         playing->errors++;
       }
+#     ifdef MONITOR_INTERRUPT_HANDLERS
+           OVF_MONITOR_CLR;
+#     endif //MONITOR_INTERRUPT_HANDLERS
       return;
     }
   }
@@ -233,29 +247,38 @@ ISR(TCA_OVF_vect) {
     playpos++;
   }
 
-#if DVOLUME
+#ifdef DVOLUME
   uint16_t tmp = (dh << 8) | dl;
   tmp >>= playing->volume;
   dh = tmp >> 8;
   dl = tmp;
 #endif // DVOLUME
 // The built in DAC is 10 bits. We can only use DH plus the 2 MSB in DL... For best quality and higher efficiency use an external volume control (DVOLUME not recommended)
-DAC0.DATAL = dl & 0xC0;
-DAC0.DATAH = dh; 
+  DAC0.DATAL = dl & 0xC0;
+  DAC0.DATAH = dh; 
+# ifdef MONITOR_INTERRUPT_HANDLERS
+     OVF_MONITOR_CLR;
+# endif //MONITOR_INTERRUPT_HANDLERS
 }
 //------------------------------------------------------------------------------
 // this is the interrupt that fills the playbuffer
 
 ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
+# ifdef MONITOR_INTERRUPT_HANDLERS
+      CMP_MONITOR_SET;
+# endif //MONITOR_INTERRUPT_HANDLERS
   AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_CMP0_bm;  // Clear flag
   // turn off calling interrupt
   //TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
   AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP0_bm)); // Disable interrupt
 
-  if (sdstatus != SD_FILLING)
-    return;
-
-  // enable interrupts while reading the SD
+  if (sdstatus != SD_FILLING) {
+#    ifdef MONITOR_INTERRUPT_HANDLERS
+        CMP_MONITOR_CLR;
+#    endif //MONITOR_INTERRUPT_HANDLERS
+     return;
+  }
+  // enable interrupts while reading the SD - note: the periodic interrupt that feed the DAC need to have higher priority for this to work...
   sei();
 
   int16_t read = playing->readWaveData(sdbuff, PLAYBUFFLEN);
@@ -268,6 +291,9 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
     sdend = sdbuff;
     sdstatus = SD_END_FILE;
   }
+# ifdef MONITOR_INTERRUPT_HANDLERS
+    CMP_MONITOR_CLR;
+# endif //MONITOR_INTERRUPT_HANDLERS
 }
 //------------------------------------------------------------------------------
 /** create an instance of WaveDx. */
@@ -286,10 +312,12 @@ WaveDx::WaveDx(void) { fd = 0; }
 uint8_t WaveDx::create(FatReader &f) {
   // 18 byte buffer
   // can use this since Arduino and RIFF are Little Endian
+#ifdef DVOLUME
   if (!DVOLUME) {
     DBG_SERIAL.println("DVOLUME must be set to non-zero in WaveDx.h");
     return false;
   }
+#endif //DVOLUME
   union {
     struct {
       char id[4];
@@ -405,6 +433,11 @@ void WaveDx::pause(void) {
   fd->volume()->rawDevice()->readEnd(); // redo any partial read on resume
 }
 
+//------------------------------------------------------------------------------
+/**
+ * Initialize the built in DAC
+ *
+ */
 void avrDACinit() {
     // Disable Digital Input buffer on DAC0 pin as requird by the data sheet
     pinConfigure(PIN_PD6, PIN_ISC_DISABLE);
@@ -426,6 +459,13 @@ void avrDACinit() {
  */
 void WaveDx::play(void) {
   // setup the interrupt as necessary
+
+#ifdef MONITOR_INTERRUPT_HANDLERS
+  pinMode(OVF_MONITOR_PIN, OUTPUT);
+  digitalWrite(OVF_MONITOR_PIN, LOW);
+  pinMode(CMP_MONITOR_PIN, OUTPUT);
+  digitalWrite(CMP_MONITOR_PIN, LOW);
+#endif //MONITOR_INTERRUPT_HANDLERS
 
   int16_t read;
 
@@ -453,15 +493,29 @@ void WaveDx::play(void) {
   //mcpDacInit();
   avrDACinit();
 
-  //Set up TCA
+  //Tave over and reset TCAx 
   takeOverTCA(); //dxCore function - force the core to stop using the timer and reset to the startup configuration
-  AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;         // Enable overflow interrupt
+  AVR_TCA_PORT.SINGLE.CTRLA = 0x00; // Make sure the timer is disabled
+  AVR_TCA_PORT.SINGLE.CTRLESET = TCA_SINGLE_CMD_RESET_gc | 0x03; // Set CMD to RESET to do a hard reset of the timer
+  AVR_TCA_PORT.SINGLE.CTRLD = 0x00; // Make sure we are in single mode
+  AVR_TCA_PORT.SINGLE.INTCTRL = 0x00; //Disable all interrupts
+  AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm | TCA_SINGLE_CMP0_bm;  // Clear interrupt flags
+
+  cli();
+
+  DBG_SERIAL.print(F("old LVL1VEC=")); DBG_SERIAL.println(CPUINT.LVL1VEC);
+  CPUINT.LVL1VEC = TCA_OVF_vect_num; // Set the TCA timer OVF vector as high priority 
+  DBG_SERIAL.print(F("new LVL1VEC=")); DBG_SERIAL.println(CPUINT.LVL1VEC);
+  // Set up TCA
+  
   AVR_TCA_PORT.SINGLE.CTRLB = TCA_SINGLE_WGMODE_NORMAL_gc; // Normal mode. Disabled: Compare outputs, lock update. 
   AVR_TCA_PORT.SINGLE.EVCTRL &= ~(TCA_SINGLE_CNTEI_bm);    // Disable event counting
   AVR_TCA_PORT.SINGLE.PER = F_CPU / (dwSamplesPerSec * Channels);
+  DBG_SERIAL.print("PER="); DBG_SERIAL.println(AVR_TCA_PORT.SINGLE.PER);
   AVR_TCA_PORT.SINGLE.CMP0 = 1;
-  AVR_TCA_PORT.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1_gc | TCA_SINGLE_ENABLE_bm;  // start timer with clock DIV1
-
+  AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;         // Enable overflow interrupt
+  AVR_TCA_PORT.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1_gc | TCA_SINGLE_ENABLE_bm;  // enable the timer with clock DIV1
+  sei();
 /*
   // Set up timer one ==> TCA
   // Normal operation - no pwm not connected to pins
@@ -586,4 +640,11 @@ void WaveDx::stop(void) {
   playing->isplaying = 0;
   playing = 0;
   resumeTCA();
+}
+
+void WaveDx::debugPrint() {
+  DBG_SERIAL.print(F("Rem. bytes="));DBG_SERIAL.print(remainingBytesInChunk);
+  DBG_SERIAL.print(F(", isplaying="));DBG_SERIAL.print(isplaying);
+  DBG_SERIAL.print(F(", errors="));DBG_SERIAL.print(errors);
+  DBG_SERIAL.print(F(", sdstatus="));DBG_SERIAL.print(sdstatus);
 }
