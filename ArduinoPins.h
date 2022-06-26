@@ -17,4 +17,11 @@
 #define MISO_PIN PIN_PA5
 #define SCK_PIN  PIN_PA6
 
+#define OVF_MONITOR_PIN PIN_PC0
+#define CMP_MONITOR_PIN PIN_PC1
+#define OVF_MONITOR_SET VPORTC.OUT |= 0x01   
+#define OVF_MONITOR_CLR VPORTC.OUT &= (~0x01)
+#define CMP_MONITOR_SET VPORTC.OUT |= 0x02
+#define CMP_MONITOR_CLR VPORTC.OUT &= (~0x02)
+
 #endif // ArduinoPins_h
