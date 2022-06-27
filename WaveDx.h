@@ -103,6 +103,13 @@
  *
  */
 class WaveDx {
+public: 
+  //Moved from WaveDx, this alone shaves 10% from the OVF interrupt execution due to less register used
+  uint8_t *playend; ///< end position for current buffer
+  uint8_t *playpos; ///< position of next sample
+  uint8_t *sdbuff;  ///< SD fill buffer
+  uint8_t *sdend;   ///< end of data in sd buffer
+  uint8_t sdstatus = 0;
 public:
   /** Wave file number of channels. Mono = 1, Stereo = 2 */
   uint8_t Channels;

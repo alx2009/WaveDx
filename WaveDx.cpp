@@ -174,19 +174,21 @@ http://www.atmel.com/dyn/resources/prod_documents/doc8161.pdf
 #endif // PLAYBUFFLEN
 
 WaveDx *playing = 0;
-
 uint8_t buffer1[PLAYBUFFLEN];
 uint8_t buffer2[PLAYBUFFLEN];
-uint8_t *playend; ///< end position for current buffer
-uint8_t *playpos; ///< position of next sample
-uint8_t *sdbuff;  ///< SD fill buffer
-uint8_t *sdend;   ///< end of data in sd buffer
+
+/*
+uint8_t *playing->playend; ///< end position for current buffer
+uint8_t *playing->playpos; ///< position of next sample
+uint8_t *playing->sdbuff;  ///< SD fill buffer
+uint8_t *playing->sdend;   ///< end of data in sd buffer
+*/
 
 // status of sd
 #define SD_READY 1    ///< buffer is ready to be played
 #define SD_FILLING 2  ///< buffer is being filled from DS
 #define SD_END_FILE 3 ///< reached end of file
-uint8_t sdstatus = 0;
+//uint8_t playing->sdstatus = 0;
 
 //
 //
@@ -202,17 +204,17 @@ ISR(TCA_OVF_vect) {
      }
 #endif //INT_VECT_ADD_EXTRA_CHECKS
 
-  if (playpos >= playend) {
-    if (sdstatus == SD_READY) {
+  if (playing->playpos >= playing->playend) {
+    if (playing->sdstatus == SD_READY) {
 
       // swap double buffers
-      playpos = sdbuff;
-      playend = sdend;
-      sdbuff = sdbuff != buffer1 ? buffer1 : buffer2;
+      playing->playpos = playing->sdbuff;
+      playing->playend = playing->sdend;
+      playing->sdbuff = playing->sdbuff != buffer1 ? buffer1 : buffer2;
 
-      sdstatus = SD_FILLING;
+      playing->sdstatus = SD_FILLING;
       AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
-    } else if (sdstatus == SD_END_FILE) {
+    } else if (playing->sdstatus == SD_END_FILE) {
       playing->stop();  
       MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
       return;
@@ -232,14 +234,14 @@ ISR(TCA_OVF_vect) {
   if (playing->BitsPerSample == 16) {
 
     // 16-bit is signed
-    dh = 0X80 ^ playpos[1];
-    dl = playpos[0];
-    playpos += 2;
+    dh = 0X80 ^ playing->playpos[1];
+    dl = playing->playpos[0];
+    playing->playpos += 2;
   } else {
     // 8-bit is unsigned
-    dh = playpos[0];
+    dh = playing->playpos[0];
     dl = 0;
-    playpos++;
+    playing->playpos++;
   }
 
 #ifdef DVOLUME
@@ -263,22 +265,22 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
   //TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
   AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP0_bm)); // Disable interrupt
 
-  if (sdstatus != SD_FILLING) {
+  if (playing->sdstatus != SD_FILLING) {
      MONITOR_PIN_CLR(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
      return;
   }
   // enable interrupts while reading the SD - note: the periodic interrupt that feed the DAC need to have higher priority for this to work...
   sei();
 
-  int16_t read = playing->readWaveData(sdbuff, PLAYBUFFLEN);
+  int16_t read = playing->readWaveData(playing->sdbuff, PLAYBUFFLEN);
 
   cli();
   if (read > 0) {
-    sdend = sdbuff + read;
-    sdstatus = SD_READY;
+    playing->sdend = playing->sdbuff + read;
+    playing->sdstatus = SD_READY;
   } else {
-    sdend = sdbuff;
-    sdstatus = SD_END_FILE;
+    playing->sdend = playing->sdbuff;
+    playing->sdstatus = SD_END_FILE;
   }
   MONITOR_PIN_CLR(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
 }
@@ -462,16 +464,16 @@ void WaveDx::play(void) {
   read = readWaveData(buffer1, PLAYBUFFLEN);
   if (read <= 0)
     return;
-  playpos = buffer1;
-  playend = buffer1 + read;
+  playing->playpos = buffer1;
+  playing->playend = buffer1 + read;
 
   // fill the second buffer
   read = readWaveData(buffer2, PLAYBUFFLEN);
   if (read < 0)
     return;
-  sdbuff = buffer2;
-  sdend = sdbuff + read;
-  sdstatus = SD_READY;
+  playing->sdbuff = buffer2;
+  playing->sdend = playing->sdbuff + read;
+  playing->sdstatus = SD_READY;
 
   // its official!
   isplaying = 1;
