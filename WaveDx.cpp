@@ -205,9 +205,11 @@ ISR(TCA_OVF_vect) {
       playing->sdbuff = playing->sdbuff != playing->buffer1 ? playing->buffer1 : playing->buffer2;
 
       playing->sdstatus = SD_FILLING;
-      AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
+      AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare 0
     } else if (playing->sdstatus == SD_END_FILE) {
-      playing->stop();  
+      //playing->stop();  
+      //playing->isplaying=0;
+      AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP1_bm;  // Enable interrupt on compare 1
       MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
       return;
     } else {
@@ -276,6 +278,20 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
   }
   MONITOR_PIN_CLR(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
 }
+//
+//
+//------------------------------------------------------------------------------
+// This is the interrupt that stops playing 
+// This is done to simplify the OVF handler, shaving 125 ns, which is
+// about 6% of the total time spent in that interrupt handler.
+ISR(TCA_CMP1_vect) {              //TCA COMPARE 1 vector
+  MONITOR_PIN_SET(CMP1_MONITOR_VPORT, CMP1_MONITOR_PIN_bm);
+  AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_CMP1_bm;  // Clear flag
+  AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP1_bm)); // Disable interrupt
+  if (playing!=0) playing->stop();
+  MONITOR_PIN_CLR(CMP1_MONITOR_VPORT, CMP1_MONITOR_PIN_bm);
+}
+
 //------------------------------------------------------------------------------
 /** create an instance of WaveDx. */
 WaveDx::WaveDx(void) { fd = 0; buffer1=buffer1_array; buffer2=buffer2_array; }
@@ -446,6 +462,8 @@ void WaveDx::play(void) {
   digitalWrite(OVF_MONITOR_PIN, LOW);
   pinMode(CMP0_MONITOR_PIN, OUTPUT);
   digitalWrite(CMP0_MONITOR_PIN, LOW);
+  pinMode(CMP1_MONITOR_PIN, OUTPUT);
+  digitalWrite(CMP1_MONITOR_PIN, LOW);
 #endif //MONITOR_INTERRUPT_HANDLERS
 
   int16_t read;
@@ -494,6 +512,7 @@ void WaveDx::play(void) {
   AVR_TCA_PORT.SINGLE.PER = F_CPU / (dwSamplesPerSec * Channels);
   DBG_SERIAL.print("PER="); DBG_SERIAL.println(AVR_TCA_PORT.SINGLE.PER);
   AVR_TCA_PORT.SINGLE.CMP0 = 1;
+  AVR_TCA_PORT.SINGLE.CMP1 = 1;
   AVR_TCA_PORT.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;         // Enable overflow interrupt
   AVR_TCA_PORT.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1_gc | TCA_SINGLE_ENABLE_bm;  // enable the timer with clock DIV1
   sei();
