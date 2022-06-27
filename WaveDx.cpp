@@ -174,21 +174,13 @@ http://www.atmel.com/dyn/resources/prod_documents/doc8161.pdf
 #endif // PLAYBUFFLEN
 
 WaveDx *playing = 0;
-uint8_t buffer1[PLAYBUFFLEN];
-uint8_t buffer2[PLAYBUFFLEN];
-
-/*
-uint8_t *playing->playend; ///< end position for current buffer
-uint8_t *playing->playpos; ///< position of next sample
-uint8_t *playing->sdbuff;  ///< SD fill buffer
-uint8_t *playing->sdend;   ///< end of data in sd buffer
-*/
+uint8_t buffer1_array[PLAYBUFFLEN];
+uint8_t buffer2_array[PLAYBUFFLEN];
 
 // status of sd
 #define SD_READY 1    ///< buffer is ready to be played
 #define SD_FILLING 2  ///< buffer is being filled from DS
 #define SD_END_FILE 3 ///< reached end of file
-//uint8_t playing->sdstatus = 0;
 
 //
 //
@@ -210,7 +202,7 @@ ISR(TCA_OVF_vect) {
       // swap double buffers
       playing->playpos = playing->sdbuff;
       playing->playend = playing->sdend;
-      playing->sdbuff = playing->sdbuff != buffer1 ? buffer1 : buffer2;
+      playing->sdbuff = playing->sdbuff != playing->buffer1 ? playing->buffer1 : playing->buffer2;
 
       playing->sdstatus = SD_FILLING;
       AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
@@ -286,7 +278,7 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
 }
 //------------------------------------------------------------------------------
 /** create an instance of WaveDx. */
-WaveDx::WaveDx(void) { fd = 0; }
+WaveDx::WaveDx(void) { fd = 0; buffer1=buffer1_array; buffer2=buffer2_array; }
 //------------------------------------------------------------------------------
 /**
  * Read a wave file's metadata and initialize member variables.

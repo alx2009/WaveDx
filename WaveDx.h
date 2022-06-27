@@ -105,6 +105,8 @@
 class WaveDx {
 public: 
   //Moved from WaveDx, this alone shaves 10% from the OVF interrupt execution due to less register used
+  uint8_t *buffer1;
+  uint8_t *buffer2;
   uint8_t *playend; ///< end position for current buffer
   uint8_t *playpos; ///< position of next sample
   uint8_t *sdbuff;  ///< SD fill buffer
