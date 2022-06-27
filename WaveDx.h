@@ -29,6 +29,13 @@
  */
 #define OPTIMIZE_CONTIGUOUS 1
 /**
+ * If defined, include extra checks in the interrupt vector. This waste 
+ * a little bit extra time, and as far as I can se it should not be needed.
+ * But it was included in the original WaveHC, so it is kept just in case, 
+ * albeit not active by default in WaveDx
+ */
+//#define INT_VECT_ADD_EXTRA_CHECKS 1
+/**
  * Software volume control should be compatible with Ladyada's library.
  * Uses shift to decrease volume by 6 dB per step. See DAC ISR in WaveDx.cpp.
  * Must be set after call to WaveDx::create().
@@ -44,9 +51,18 @@
 #define RATE_ERROR_LEVEL 2
 
 /**
- * If defined, set a pin at the beginning and end of the Timer interrupt handlers. PINs are defined in ArduinoPins.h
+ * If MONITOR_INTERRUPT_HANDLERS is defined, set a pin at the beginning and end of the 
+ * Timer interrupt handlers. 
+ * PINs are defined in ArduinoPins.h
  */
 #define MONITOR_INTERRUPT_HANDLERS 1
+#ifdef MONITOR_INTERRUPT_HANDLERS
+#   define MONITOR_PIN_SET(MYVPORT, MYPIN_bm)  MYVPORT.OUT |= MYPIN_bm
+#   define MONITOR_PIN_CLR(MYVPORT, MYPIN_bm)  MYVPORT.OUT &= (~MYPIN_bm)
+#else
+#   define MONITOR_PIN_SET(VPORT, PIN_BM)  
+#   define MONITOR_PIN_CLR(VPORT, PIN_BM)  
+#endif //MONITOR_INTERRUPT_HANDLERS
 //------------------------------------------------------------------------------
 // Set the size for wave data buffers.  Must be 256 or 512.
 #if defined(__AVR_ATmega168P__) || defined(__AVR_ATmega168__)

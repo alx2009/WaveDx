@@ -188,19 +188,19 @@ uint8_t *sdend;   ///< end of data in sd buffer
 #define SD_END_FILE 3 ///< reached end of file
 uint8_t sdstatus = 0;
 
+//
+//
 //------------------------------------------------------------------------------
 // timer interrupt for DAC
 ISR(TCA_OVF_vect) {
-# ifdef MONITOR_INTERRUPT_HANDLERS
-     OVF_MONITOR_SET;
-# endif //MONITOR_INTERRUPT_HANDLERS
-  AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;  // Clear flag
-  if (!playing) {
-#    ifdef MONITOR_INTERRUPT_HANDLERS
-        OVF_MONITOR_CLR;
-#    endif //MONITOR_INTERRUPT_HANDLERS
-    return;
-  }
+   MONITOR_PIN_SET(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
+   AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;  // Clear flag
+# ifdef INT_VECT_ADD_EXTRA_CHECKS
+     if (!playing) {
+       MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
+       return;
+     }
+#endif //INT_VECT_ADD_EXTRA_CHECKS
 
   if (playpos >= playend) {
     if (sdstatus == SD_READY) {
@@ -211,23 +211,19 @@ ISR(TCA_OVF_vect) {
       sdbuff = sdbuff != buffer1 ? buffer1 : buffer2;
 
       sdstatus = SD_FILLING;
-      // interrupt to call SD reader
-      //TIMSK1 |= _BV(OCIE1B);                  //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), set OCIE1B
       AVR_TCA_PORT.SINGLE.INTCTRL |= TCA_SINGLE_CMP0_bm;  // Enable interrupt on compare
     } else if (sdstatus == SD_END_FILE) {
-      playing->stop();
-#     ifdef MONITOR_INTERRUPT_HANDLERS
-           OVF_MONITOR_CLR;
-#     endif //MONITOR_INTERRUPT_HANDLERS
+      playing->stop();  
+      MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
       return;
     } else {
-      // count overrun error if not at end of file
-      if (playing->remainingBytesInChunk) {
-        playing->errors++;
-      }
-#     ifdef MONITOR_INTERRUPT_HANDLERS
-           OVF_MONITOR_CLR;
-#     endif //MONITOR_INTERRUPT_HANDLERS
+#     ifdef INT_VECT_ADD_EXTRA_CHECKS
+         // count overrun error if not at end of file
+         if (playing->remainingBytesInChunk) {
+            playing->errors++;
+         }
+#     endif //INT_VECT_ADD_EXTRA_CHECKS
+      MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
       return;
     }
   }
@@ -240,7 +236,6 @@ ISR(TCA_OVF_vect) {
     dl = playpos[0];
     playpos += 2;
   } else {
-
     // 8-bit is unsigned
     dh = playpos[0];
     dl = 0;
@@ -256,26 +251,20 @@ ISR(TCA_OVF_vect) {
 // The built in DAC is 10 bits. We can only use DH plus the 2 MSB in DL... For best quality and higher efficiency use an external volume control (DVOLUME not recommended)
   DAC0.DATAL = dl & 0xC0;
   DAC0.DATAH = dh; 
-# ifdef MONITOR_INTERRUPT_HANDLERS
-     OVF_MONITOR_CLR;
-# endif //MONITOR_INTERRUPT_HANDLERS
+  MONITOR_PIN_CLR(OVF_MONITOR_VPORT, OVF_MONITOR_PIN_bm);
 }
 //------------------------------------------------------------------------------
 // this is the interrupt that fills the playbuffer
 
 ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
-# ifdef MONITOR_INTERRUPT_HANDLERS
-      CMP_MONITOR_SET;
-# endif //MONITOR_INTERRUPT_HANDLERS
+  MONITOR_PIN_SET(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
   AVR_TCA_PORT.SINGLE.INTFLAGS = TCA_SINGLE_CMP0_bm;  // Clear flag
   // turn off calling interrupt
   //TIMSK1 &= ~_BV(OCIE1B);             //TIMER1 Timer Interrupt Mask Register 1 (TIMSK1), clear OCIE1B
   AVR_TCA_PORT.SINGLE.INTCTRL &= (~(TCA_SINGLE_CMP0_bm)); // Disable interrupt
 
   if (sdstatus != SD_FILLING) {
-#    ifdef MONITOR_INTERRUPT_HANDLERS
-        CMP_MONITOR_CLR;
-#    endif //MONITOR_INTERRUPT_HANDLERS
+     MONITOR_PIN_CLR(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
      return;
   }
   // enable interrupts while reading the SD - note: the periodic interrupt that feed the DAC need to have higher priority for this to work...
@@ -291,9 +280,7 @@ ISR(TCA_CMP0_vect) {              //TCA COMPARE 0 vector
     sdend = sdbuff;
     sdstatus = SD_END_FILE;
   }
-# ifdef MONITOR_INTERRUPT_HANDLERS
-    CMP_MONITOR_CLR;
-# endif //MONITOR_INTERRUPT_HANDLERS
+  MONITOR_PIN_CLR(CMP0_MONITOR_VPORT, CMP0_MONITOR_PIN_bm);
 }
 //------------------------------------------------------------------------------
 /** create an instance of WaveDx. */
@@ -463,8 +450,8 @@ void WaveDx::play(void) {
 #ifdef MONITOR_INTERRUPT_HANDLERS
   pinMode(OVF_MONITOR_PIN, OUTPUT);
   digitalWrite(OVF_MONITOR_PIN, LOW);
-  pinMode(CMP_MONITOR_PIN, OUTPUT);
-  digitalWrite(CMP_MONITOR_PIN, LOW);
+  pinMode(CMP0_MONITOR_PIN, OUTPUT);
+  digitalWrite(CMP0_MONITOR_PIN, LOW);
 #endif //MONITOR_INTERRUPT_HANDLERS
 
   int16_t read;
