@@ -6,8 +6,8 @@
 
 // SPI port
 #ifdef DB_28_PINS
-#   define SS_PIN   PIN_PF1
-#   warning "DB_28_PINS: SS_PIN=PIN_PF1"
+#   define SS_PIN   PIN_PA2
+#   warning "DB_28_PINS: SS_PIN=PIN_PA2"
 #else
 #   define SS_PIN   PIN_PB5
 #   warning "DB_32_PINS or larger part: SS_PIN=PIN_PB5"
