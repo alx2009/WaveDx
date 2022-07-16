@@ -19,6 +19,7 @@
 #define AVR_PORT_H
 
 #define AVR_SPI_PORT SPI0
+#define AVR_USPI_PORT USART0
 
 #ifdef DB_28_PINS
 #   define AVR_TCA_PORT   TCA0
@@ -28,7 +29,7 @@
 #   define TCA_CMP1_vect TCA0_CMP1_vect
     inline void takeOverTCA() {takeOverTCA0();}
     inline void resumeTCA() {resumeTCA0();}
-#   define DBG_SERIAL Serial    
+#   define DBG_SERIAL Serial2    
 #else
 #   define AVR_TCA_PORT   TCA1
 #   define TCA_OVF_vect TCA1_OVF_vect

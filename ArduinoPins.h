@@ -6,8 +6,8 @@
 
 // SPI port
 #ifdef DB_28_PINS
-#   define SS_PIN   PIN_PF1
-#   warning "DB_28_PINS: SS_PIN=PIN_PF1"
+#   define SS_PIN   PIN_PA2
+#   warning "DB_28_PINS: SS_PIN=PIN_PA2"
 #else
 #   define SS_PIN   PIN_PB5
 #   warning "DB_32_PINS or larger part: SS_PIN=PIN_PB5"
@@ -16,6 +16,14 @@
 #define MOSI_PIN PIN_PA4
 #define MISO_PIN PIN_PA5
 #define SCK_PIN  PIN_PA6
+
+#define USPI_MOSI_PIN PIN_PA4
+#define USPI_MISO_PIN PIN_PA5
+#define USPI_SCK_PIN  PIN_PA6
+
+#define USPI_PORTMUX_REG PORTMUX.USARTROUTEA
+#define USPI_PORTMUX_SET      0x1
+#define USPI_PORTMUX_SET_MASK 0x3
 
 #define OVF_MONITOR_PIN  PIN_PC0
 #define OVF_MONITOR_VPORT  VPORTC
